@@ -16,6 +16,7 @@ internal sealed class CreateServerForm : Form
         ("Objects", "WHOOOOOOO — панель объектов в игре"),
     };
 
+    private readonly TextBox _name = new();
     private readonly ComboBox _type = new();
     private readonly ComboBox _size = new();
     private readonly ComboBox _version = new();
@@ -45,7 +46,7 @@ internal sealed class CreateServerForm : Form
         };
 
         Text = "Создать сервер";
-        ClientSize = new Size(470, 396);
+        ClientSize = new Size(470, 430);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -53,6 +54,13 @@ internal sealed class CreateServerForm : Form
         Font = new Font("Segoe UI", 9f);
 
         int y = 14;
+        AddLabel("Название сервера", y);
+        _name.Bounds = new Rectangle(190, y - 3, 260, 24);
+        _name.Text = string.IsNullOrWhiteSpace(current.Name) ? "Мой сервер" : current.Name;
+        _name.MaxLength = 40;
+        Controls.Add(_name);
+        y += 34;
+
         AddLabel("Тип сервера", y);
         _type.Bounds = new Rectangle(190, y - 3, 260, 24);
         _type.DropDownStyle = ComboBoxStyle.DropDownList;
@@ -127,9 +135,9 @@ internal sealed class CreateServerForm : Form
         _status.Text = "Версии загружаются…";
         Controls.Add(_status);
 
-        var ok = new Button { Text = "Создать", Bounds = new Rectangle(250, 344, 100, 34) };
+        var ok = new Button { Text = "Создать", Bounds = new Rectangle(250, 378, 100, 34) };
         ok.Click += (_, _) => Apply();
-        var cancel = new Button { Text = "Отмена", Bounds = new Rectangle(358, 344, 100, 34), DialogResult = DialogResult.Cancel };
+        var cancel = new Button { Text = "Отмена", Bounds = new Rectangle(358, 378, 100, 34), DialogResult = DialogResult.Cancel };
         Controls.Add(ok);
         Controls.Add(cancel);
         AcceptButton = ok;
@@ -204,6 +212,7 @@ internal sealed class CreateServerForm : Form
     private void Apply()
     {
         Result.Type = Modes[Math.Max(0, _type.SelectedIndex)].Code;
+        Result.Name = string.IsNullOrWhiteSpace(_name.Text) ? "Мой сервер" : _name.Text.Trim();
         Result.Size = SelectedSize;
         Result.Version = _version.SelectedItem as string ?? Result.Version;
         Result.MaxPlayers = (int)_players.Value;

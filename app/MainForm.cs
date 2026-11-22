@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 
 namespace MemHost;
 
-public sealed class MainForm : Form
+internal sealed class MainForm : Form
 {
     private const int CanvasPixels = 330;
     private const int MenuHeight = 24;
@@ -58,13 +58,14 @@ public sealed class MainForm : Form
     private readonly Button _stop = new();
     private readonly Button _join = new();
     private readonly Label _hint = new();
+    private Button? _apply;
 
     private int Cell => Math.Max(6, CanvasPixels / _options.Size);
 
-    public MainForm()
+    public MainForm(string serverDir, ServerOptions options)
     {
-        _serverDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "MemHost");
-        _options = ServerOptions.Load(_serverDir);
+        _serverDir = serverDir;
+        _options = options;
         _cells = new string?[_options.Size, _options.Size];
 
         Text = "Mem Host — Paint сервер Paper";
@@ -112,7 +113,7 @@ public sealed class MainForm : Form
         SelectBlock(0);
 
         MakeButton("Создать сервер…", 36, CreateClicked);
-        MakeButton("Применить рисунок", 76, ApplyClicked);
+        _apply = MakeButton("Применить рисунок", 76, ApplyClicked);
         MakeButton("Открыть папку сервера", 116, (_, _) => OpenFolder());
 
         _start.Text = "Запустить";
@@ -171,6 +172,14 @@ public sealed class MainForm : Form
         LayoutCanvas();
         UpdateModeUi();
         UpdateTitle();
+
+        Shown += async (_, _) =>
+        {
+            if (!File.Exists(Path.Combine(_serverDir, "paper.jar")))
+            {
+                await BuildServerAsync();
+            }
+        };
     }
 
     private void BuildMenu()
@@ -196,11 +205,12 @@ public sealed class MainForm : Form
         MainMenuStrip = menu;
     }
 
-    private void MakeButton(string text, int y, EventHandler handler)
+    private Button MakeButton(string text, int y, EventHandler handler)
     {
         var button = new Button { Text = text, Bounds = new Rectangle(690, y, 290, 34) };
         button.Click += handler;
         Controls.Add(button);
+        return button;
     }
 
     private void SelectBlock(int index)
@@ -237,11 +247,16 @@ public sealed class MainForm : Form
     private void UpdateModeUi()
     {
         bool paint = _options.Type == "MemPaint";
-        _canvas.Enabled = paint;
-        _palette.Enabled = paint;
+        _canvas.Visible = paint;
+        _palette.Visible = paint;
+        foreach (Control control in Controls)
+        {
+            if (control is Label label && label.Text == "Блоки") label.Visible = paint;
+        }
+        if (_apply != null) _apply.Enabled = paint;
         _hint.Text = paint
             ? "ЛКМ — рисовать, ПКМ — стереть. Один пиксель = один блок."
-            : "Режим " + ModeName(_options.Type) + ": рисунок не нужен, мир строит плагин.";
+            : "Режим " + ModeName(_options.Type) + ": холст не используется, мир строит плагин при запуске сервера.";
     }
 
     private string?[,] ResizeGrid(int size)
