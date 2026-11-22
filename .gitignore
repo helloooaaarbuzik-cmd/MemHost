@@ -1,0 +1,14 @@
+bin/
+obj/
+dist/
+jdk/
+jdk.zip
+*.pdb
+*.user
+.vs/
+.vscode/
+*.log
+logs/
+world/
+
+plugin/classes/

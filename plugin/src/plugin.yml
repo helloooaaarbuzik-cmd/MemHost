@@ -1,0 +1,8 @@
+name: MemHostPaint
+version: 1.0
+main: memhost.paint.PaintPlugin
+api-version: '26.3'
+commands:
+  memhost:
+    description: Перестроить мир из рисунка
+    usage: /memhost build
