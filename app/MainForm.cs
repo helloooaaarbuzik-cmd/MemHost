@@ -57,6 +57,7 @@ public sealed class MainForm : Form
     private readonly Button _start = new();
     private readonly Button _stop = new();
     private readonly Button _join = new();
+    private readonly Label _hint = new();
 
     private int Cell => Math.Max(6, CanvasPixels / _options.Size);
 
@@ -82,12 +83,9 @@ public sealed class MainForm : Form
         _canvas.MouseUp += (_, _) => _painting = false;
         Controls.Add(_canvas);
 
-        var hint = new Label
-        {
-            Text = "ЛКМ — рисовать, ПКМ — стереть. Один пиксель = один блок.",
-            Bounds = new Rectangle(12, 380, 356, 20),
-        };
-        Controls.Add(hint);
+        _hint.Text = "ЛКМ — рисовать, ПКМ — стереть. Один пиксель = один блок.";
+        _hint.Bounds = new Rectangle(12, 380, 356, 20);
+        Controls.Add(_hint);
 
         Controls.Add(new Label { Text = "Блоки", Bounds = new Rectangle(378, 36, 300, 18) });
 
@@ -171,6 +169,8 @@ public sealed class MainForm : Form
 
         LoadArt();
         LayoutCanvas();
+        UpdateModeUi();
+        UpdateTitle();
     }
 
     private void BuildMenu()
@@ -217,6 +217,31 @@ public sealed class MainForm : Form
         int cell = Cell;
         _canvas.Bounds = new Rectangle(12, 12 + MenuHeight, _options.Size * cell + 2, _options.Size * cell + 2);
         _canvas.Invalidate();
+    }
+
+    private static string ModeName(string type) => type switch
+    {
+        "Standart" => "Standart",
+        "OneBlock" => "OneBlock",
+        "SkyBlock" => "SkyBlock",
+        "Objects" => "WHOOOOOOO",
+        _ => "MemPaint",
+    };
+
+    private void UpdateTitle()
+    {
+        Text = "Mem Host — " + ModeName(_options.Type) + " · " + _options.Version
+               + (_options.Type == "MemPaint" ? " · " + _options.Size + "×" + _options.Size : string.Empty);
+    }
+
+    private void UpdateModeUi()
+    {
+        bool paint = _options.Type == "MemPaint";
+        _canvas.Enabled = paint;
+        _palette.Enabled = paint;
+        _hint.Text = paint
+            ? "ЛКМ — рисовать, ПКМ — стереть. Один пиксель = один блок."
+            : "Режим " + ModeName(_options.Type) + ": рисунок не нужен, мир строит плагин.";
     }
 
     private string?[,] ResizeGrid(int size)
@@ -393,7 +418,8 @@ public sealed class MainForm : Form
         _options = options;
         _options.Save(_serverDir);
         LayoutCanvas();
-        Text = "Mem Host — " + _options.Version + " · " + _options.Size + "×" + _options.Size;
+        UpdateModeUi();
+        UpdateTitle();
         await BuildServerAsync();
     }
 
@@ -415,6 +441,7 @@ public sealed class MainForm : Form
             File.WriteAllText(Path.Combine(_serverDir, "server.properties"), BuildProperties(), new UTF8Encoding(false));
             WriteWhitelist();
             WriteArt();
+            WritePluginConfig();
 
             var plugin = Path.Combine(AppContext.BaseDirectory, "MemHostPaint.jar");
             if (!File.Exists(plugin)) throw new FileNotFoundException("Рядом с программой нет MemHostPaint.jar", plugin);
@@ -456,8 +483,15 @@ public sealed class MainForm : Form
     private string BuildProperties()
     {
         var text = new StringBuilder();
-        text.AppendLine("level-type=minecraft\\:flat");
-        text.AppendLine("generator-settings={\"layers\":[{\"block\":\"minecraft:air\",\"height\":1}],\"biome\":\"minecraft:plains\"}");
+        if (_options.Type == "Standart")
+        {
+            text.AppendLine("level-type=minecraft\\:normal");
+        }
+        else
+        {
+            text.AppendLine("level-type=minecraft\\:flat");
+            text.AppendLine("generator-settings={\"layers\":[{\"block\":\"minecraft:air\",\"height\":1}],\"biome\":\"minecraft:plains\"}");
+        }
         text.AppendLine("online-mode=" + (_options.AllowAll ? "false" : "true"));
         text.AppendLine("white-list=" + (_options.Whitelist ? "true" : "false"));
         text.AppendLine("max-players=" + _options.MaxPlayers);
@@ -469,6 +503,22 @@ public sealed class MainForm : Form
         text.AppendLine("rcon.port=25575");
         text.AppendLine("rcon.password=" + _options.RconPassword);
         return text.ToString();
+    }
+
+    private void WritePluginConfig()
+    {
+        string mode = _options.Type switch
+        {
+            "Standart" => "standart",
+            "OneBlock" => "oneblock",
+            "SkyBlock" => "skyblock",
+            "Objects" => "objects",
+            _ => "paint",
+        };
+        var folder = Path.Combine(_serverDir, "plugins", "MemHostPaint");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "config.yml"),
+            "mode: " + mode + "\nworld: world\nfallback: STONE\n", new UTF8Encoding(false));
     }
 
     private void WriteWhitelist()

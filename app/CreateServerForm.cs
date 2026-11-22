@@ -7,6 +7,15 @@ internal sealed class CreateServerForm : Form
 {
     private static readonly int[] Sizes = { 10, 16, 24, 32, 48, 64 };
 
+    private static readonly (string Code, string Label)[] Modes =
+    {
+        ("MemPaint", "MemPaint — рисунок блоками"),
+        ("Standart", "Standart — обычный мир"),
+        ("OneBlock", "OneBlock — один блок"),
+        ("SkyBlock", "SkyBlock — остров в пустоте"),
+        ("Objects", "WHOOOOOOO — панель объектов в игре"),
+    };
+
     private readonly ComboBox _type = new();
     private readonly ComboBox _size = new();
     private readonly ComboBox _version = new();
@@ -47,8 +56,14 @@ internal sealed class CreateServerForm : Form
         AddLabel("Тип сервера", y);
         _type.Bounds = new Rectangle(190, y - 3, 260, 24);
         _type.DropDownStyle = ComboBoxStyle.DropDownList;
-        _type.Items.Add("MemPaint — рисунок блоками");
-        _type.SelectedIndex = 0;
+        foreach (var mode in Modes) _type.Items.Add(mode.Label);
+        int modeIndex = Array.FindIndex(Modes, m => m.Code == Result.Type);
+        _type.SelectedIndex = Math.Max(0, modeIndex);
+        _type.SelectedIndexChanged += (_, _) =>
+        {
+            _size.Enabled = Modes[_type.SelectedIndex].Code == "MemPaint";
+            UpdateMotdHint();
+        };
         Controls.Add(_type);
         y += 34;
 
@@ -132,6 +147,11 @@ internal sealed class CreateServerForm : Form
 
     private void UpdateMotdHint()
     {
+        if (Modes[_type.SelectedIndex].Code != "MemPaint")
+        {
+            _status.Text = "Рисунок не используется: мир строит плагин по выбранному режиму.";
+            return;
+        }
         _status.Text = "Мир " + SelectedSize + "×" + SelectedSize + " блоков: рисунок на холсте станет миром.";
     }
 
@@ -183,7 +203,7 @@ internal sealed class CreateServerForm : Form
 
     private void Apply()
     {
-        Result.Type = "MemPaint";
+        Result.Type = Modes[Math.Max(0, _type.SelectedIndex)].Code;
         Result.Size = SelectedSize;
         Result.Version = _version.SelectedItem as string ?? Result.Version;
         Result.MaxPlayers = (int)_players.Value;
